@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrenador de Tabla de Tipos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Animaciones suaves */
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .btn-press:active { transform: scale(0.95); }
+        .pointer-events-none { pointer-events: none; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1a202c;
+            color: white;
+            touch-action: manipulation;
+        }
+        
+        /* Animación suave para la flecha */
+        .pulse-arrow { animation: pulseArrow 1.5s infinite; }
+        @keyframes pulseArrow {
+            0%, 100% { transform: translateX(0); opacity: 0.8; }
+            50% { transform: translateX(5px); opacity: 1; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col items-center justify-center p-4 overflow-hidden select-none">
+
+    <div class="w-full max-w-md flex flex-col gap-6" id="app">
+        
+        <!-- Puntuación -->
+        <div class="flex justify-between items-center text-gray-400 text-sm font-mono">
+            <span>Racha: <b id="streak" class="text-white text-xl">0</b></span>
+            <span>Récord: <b id="high-score" class="text-white">0</b></span>
+        </div>
+
+        <!-- Área de la Pregunta -->
+        <div id="question-card" class="bg-gray-800 rounded-2xl p-6 shadow-xl text-center border-4 border-gray-700 transition-colors duration-300 relative flex flex-col items-center justify-center min-h-[180px]">
+            
+            <!-- Contenedor dinámico para el contenido de la pregunta -->
+            <div id="question-content" class="w-full">
+                <!-- Se rellena con JS -->
+            </div>
+
+        </div>
+
+        <!-- Rejilla de Respuestas (Reservamos espacio) -->
+        <div id="options-container" class="w-full">
+            <!-- Se rellena con JS -->
+        </div>
+
+    </div>
+
+    <script>
+        // ---------------------------------------------------------
+        // 1. BASE DE DATOS EXTENDIDA
+        // ---------------------------------------------------------
+        
+        const TYPE_DATA = {
+            "Normal":   { color: "#A8A77A", effectiveness: [], weakness: ["Lucha"], ineffective: ["Roca", "Acero"], immune: ["Fantasma"] },
+            "Fuego":    { color: "#EE8130", effectiveness: ["Planta", "Hielo", "Bicho", "Acero"], weakness: ["Agua", "Tierra", "Roca"], ineffective: ["Fuego", "Agua", "Roca", "Dragón"], immune: [] },
+            "Agua":     { color: "#6390F0", effectiveness: ["Fuego", "Tierra", "Roca"], weakness: ["Eléctrico", "Planta"], ineffective: ["Agua", "Planta", "Dragón"], immune: [] },
+            "Eléctrico":{ color: "#F7D02C", effectiveness: ["Agua", "Volador"], weakness: ["Tierra"], ineffective: ["Eléctrico", "Planta", "Dragón"], immune: ["Tierra"] },
+            "Planta":   { color: "#7AC74C", effectiveness: ["Agua", "Tierra", "Roca"], weakness: ["Fuego", "Hielo", "Veneno", "Volador", "Bicho"], ineffective: ["Fuego", "Planta", "Veneno", "Volador", "Bicho", "Dragón", "Acero"], immune: [] },
+            "Hielo":    { color: "#96D9D6", effectiveness: ["Planta", "Tierra", "Volador", "Dragón"], weakness: ["Fuego", "Lucha", "Roca", "Acero"], ineffective: ["Fuego", "Agua", "Hielo", "Acero"], immune: [] },
+            "Lucha":    { color: "#C22E28", effectiveness: ["Normal", "Hielo", "Roca", "Siniestro", "Acero"], weakness: ["Volador", "Psíquico", "Hada"], ineffective: ["Veneno", "Volador", "Psíquico", "Bicho", "Hada"], immune: ["Fantasma"] },
+            "Veneno":   { color: "#A33EA1", effectiveness: ["Planta", "Hada"], weakness: ["Tierra", "Psíquico"], ineffective: ["Veneno", "Tierra", "Roca", "Fantasma"], immune: ["Acero"] },
+            "Tierra":   { color: "#E2BF65", effectiveness: ["Fuego", "Eléctrico", "Veneno", "Roca", "Acero"], weakness: ["Agua", "Planta", "Hielo"], ineffective: ["Planta", "Bicho"], immune: ["Volador"] },
+            "Volador":  { color: "#A98FF3", effectiveness: ["Planta", "Lucha", "Bicho"], weakness: ["Eléctrico", "Hielo", "Roca"], ineffective: ["Eléctrico", "Roca", "Acero"], immune: [] },
+            "Psíquico": { color: "#F95587", effectiveness: ["Lucha", "Veneno"], weakness: ["Bicho", "Fantasma", "Siniestro"], ineffective: ["Psíquico", "Acero"], immune: ["Siniestro"] },
+            "Bicho":    { color: "#A6B91A", effectiveness: ["Planta", "Psíquico", "Siniestro"], weakness: ["Fuego", "Volador", "Roca"], ineffective: ["Fuego", "Lucha", "Veneno", "Volador", "Fantasma", "Acero", "Hada"], immune: [] },
+            "Roca":     { color: "#B6A136", effectiveness: ["Fuego", "Hielo", "Volador", "Bicho"], weakness: ["Agua", "Planta", "Lucha", "Tierra", "Acero"], ineffective: ["Lucha", "Tierra", "Acero"], immune: [] },
+            "Fantasma": { color: "#735797", effectiveness: ["Psíquico", "Fantasma"], weakness: ["Fantasma", "Siniestro"], ineffective: ["Siniestro"], immune: ["Normal"] },
+            "Dragón":   { color: "#6F35FC", effectiveness: ["Dragón"], weakness: ["Hielo", "Dragón", "Hada"], ineffective: ["Acero"], immune: ["Hada"] },
+            "Siniestro":{ color: "#705746", effectiveness: ["Psíquico", "Fantasma"], weakness: ["Lucha", "Bicho", "Hada"], ineffective: ["Lucha", "Siniestro", "Hada"], immune: [] },
+            "Acero":    { color: "#B7B7CE", effectiveness: ["Hielo", "Roca", "Hada"], weakness: ["Fuego", "Lucha", "Tierra"], ineffective: ["Fuego", "Agua", "Eléctrico", "Acero"], immune: [] },
+            "Hada":     { color: "#D685AD", effectiveness: ["Lucha", "Dragón", "Siniestro"], weakness: ["Veneno", "Acero"], ineffective: ["Fuego", "Veneno", "Acero"], immune: [] }
+        };
+
+        // Configuración
+        const DELAY_MS = 1200; 
+        
+        let currentStreak = 0;
+        let highScore = 0;
+        let isWaiting = false;
+        let currentAnswer = null; 
+
+        // Elementos DOM
+        const uiStreak = document.getElementById('streak');
+        const uiHighScore = document.getElementById('high-score');
+        const uiQuestionCard = document.getElementById('question-card');
+        const uiQuestionContent = document.getElementById('question-content');
+        const uiOptionsContainer = document.getElementById('options-container');
+
+        // Utils
+        const getRandomKey = (obj) => { const k = Object.keys(obj); return k[Math.floor(Math.random() * k.length)]; };
+        const shuffle = (arr) => arr.sort(() => Math.random() - 0.5);
+
+        // ---------------------------------------------------------
+        // LÓGICA PRINCIPAL
+        // ---------------------------------------------------------
+
+        function initGame() {
+            renderQuestion();
+        }
+
+        function renderQuestion() {
+            isWaiting = false;
+            uiQuestionCard.className = "bg-gray-800 rounded-2xl p-6 shadow-xl text-center border-4 border-gray-700 transition-colors duration-300 relative flex flex-col items-center justify-center min-h-[180px] fade-in";
+            uiOptionsContainer.innerHTML = "";
+
+            // Decidir modo de juego: 
+            const gameMode = Math.random() > 0.4 ? 'IDENTIFY' : 'CALC'; // 60% Identify, 40% Calc
+
+            if (gameMode === 'IDENTIFY') {
+                renderIdentifyMode();
+            } else {
+                renderCalcMode();
+            }
+        }
+
+        // --- MODO 1: IDENTIFICAR TIPO (Grid 2x2) ---
+        function renderIdentifyMode() {
+            const baseType = getRandomKey(TYPE_DATA);
+            const typeInfo = TYPE_DATA[baseType];
+            
+            let subMode = Math.random() > 0.5 ? 'attack' : 'defend';
+            if (subMode === 'attack' && typeInfo.effectiveness.length === 0) subMode = 'defend';
+            if (subMode === 'defend' && typeInfo.weakness.length === 0) subMode = 'attack';
+
+            let promptText = "";
+            let correctPool = [];
+            let borderColor = "";
+
+            if (subMode === 'attack') {
+                promptText = "Fuerte contra...";
+                correctPool = typeInfo.effectiveness;
+                borderColor = "#4ade80"; // Verde
+            } else {
+                promptText = "Débil a...";
+                correctPool = typeInfo.weakness;
+                borderColor = "#f87171"; // Rojo
+            }
+
+            uiQuestionCard.style.borderColor = borderColor;
+            currentAnswer = correctPool[Math.floor(Math.random() * correctPool.length)];
+
+            // Renderizar pregunta
+            uiQuestionContent.innerHTML = `
+                <div class="inline-block px-8 py-3 rounded-full text-3xl font-bold shadow-lg text-white uppercase tracking-wider border border-white/20 mb-3" style="background-color: ${typeInfo.color}; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                    ${baseType}
+                </div>
+                <div class="text-xl font-bold uppercase tracking-widest" style="color: ${borderColor}">${promptText}</div>
+            `;
+
+            // Opciones + Layout (IMPORTANTE: h-80 forzado aquí)
+            const allTypes = Object.keys(TYPE_DATA);
+            const validDistractors = allTypes.filter(t => t !== currentAnswer && !correctPool.includes(t) && t !== baseType);
+            const distractors = shuffle(validDistractors).slice(0, 3);
+            const options = shuffle([currentAnswer, ...distractors]);
+
+            uiOptionsContainer.className = "grid grid-cols-2 gap-3 w-full h-80"; 
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = `btn-press rounded-xl shadow-lg text-white font-bold text-lg flex items-center justify-center h-full w-full bg-gray-700 hover:bg-gray-600 border-2 border-transparent transition-all`;
+                btn.style.backgroundColor = TYPE_DATA[opt].color;
+                btn.style.textShadow = "0 1px 2px rgba(0,0,0,0.7)";
+                btn.innerText = opt;
+                btn.onclick = () => handleAnswer(opt, btn, 'type');
+                uiOptionsContainer.appendChild(btn);
+            });
+        }
+
+        // --- MODO 2: CALCULADORA (Grid 2x2) ---
+        function renderCalcMode() {
+            const attacker = getRandomKey(TYPE_DATA);
+            const attackerInfo = TYPE_DATA[attacker];
+            
+            // Lógica de selección de defensor (igual que antes)
+            let defender = "";
+            const rand = Math.random();
+            
+            if (rand < 0.3 && attackerInfo.effectiveness.length > 0) {
+                defender = attackerInfo.effectiveness[Math.floor(Math.random() * attackerInfo.effectiveness.length)];
+                currentAnswer = "x2";
+            } else if (rand < 0.6 && attackerInfo.ineffective.length > 0) {
+                defender = attackerInfo.ineffective[Math.floor(Math.random() * attackerInfo.ineffective.length)];
+                currentAnswer = "x½";
+            } else if (rand < 0.7 && attackerInfo.immune.length > 0) {
+                defender = attackerInfo.immune[Math.floor(Math.random() * attackerInfo.immune.length)];
+                currentAnswer = "x0";
+            } else {
+                const all = Object.keys(TYPE_DATA);
+                const nonNeutral = [...attackerInfo.effectiveness, ...attackerInfo.ineffective, ...attackerInfo.immune];
+                const neutralOpts = all.filter(t => !nonNeutral.includes(t));
+                defender = neutralOpts[Math.floor(Math.random() * neutralOpts.length)] || "Normal";
+                currentAnswer = "x1";
+            }
+
+            uiQuestionCard.style.borderColor = "#60a5fa"; 
+
+            // Renderizar pregunta: Atacante ➜ Defensor
+            uiQuestionContent.innerHTML = `
+                <div class="flex items-center justify-center gap-4">
+                    <div class="px-4 py-2 rounded-lg font-bold text-white shadow-md text-xl min-w-[100px]" style="background-color: ${attackerInfo.color}; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${attacker}</div>
+                    
+                    <div class="text-white text-4xl pulse-arrow px-2">➜</div>
+                    
+                    <div class="px-4 py-2 rounded-lg font-bold text-white shadow-md text-xl min-w-[100px]" style="background-color: ${TYPE_DATA[defender].color}; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${defender}</div>
+                </div>
+                <div class="text-blue-400 font-bold uppercase tracking-widest mt-4 text-sm">¿Efectividad?</div>
+            `;
+
+            // Opciones + Layout (IMPORTANTE: h-80 forzado aquí también)
+            let options = ["x0", "x½", "x1", "x2"];
+            options = shuffle(options); 
+
+            uiOptionsContainer.className = "grid grid-cols-2 gap-3 w-full h-80"; 
+
+            options.forEach(opt => {
+                const btn = document.createElement('button');
+                btn.className = `btn-press rounded-xl shadow-lg font-bold text-3xl flex items-center justify-center bg-gray-700 hover:bg-gray-600 border-2 border-gray-600 transition-all text-white h-full w-full`;
+                
+                if(opt === 'x2') btn.classList.add('text-green-400');
+                if(opt === 'x1') btn.classList.add('text-white');
+                if(opt === 'x½') btn.classList.add('text-red-400');
+                if(opt === 'x0') btn.classList.add('text-gray-500');
+
+                btn.innerText = opt;
+                btn.onclick = () => handleAnswer(opt, btn, 'calc');
+                uiOptionsContainer.appendChild(btn);
+            });
+        }
+
+
+        function handleAnswer(selected, btnElement, mode) {
+            if (isWaiting) return;
+            isWaiting = true;
+
+            const isCorrect = selected === currentAnswer;
+
+            if (isCorrect) {
+                currentStreak++;
+                if (currentStreak > highScore) highScore = currentStreak;
+                uiStreak.innerText = currentStreak;
+                uiHighScore.innerText = highScore;
+
+                btnElement.style.backgroundColor = "#064e3b";
+                btnElement.style.borderColor = "#34d399";
+                if(mode === 'calc') btnElement.style.color = "white"; 
+                
+                uiQuestionCard.style.backgroundColor = "#064e3b"; 
+                uiQuestionCard.style.borderColor = "#34d399";
+            } else {
+                currentStreak = 0;
+                uiStreak.innerText = 0;
+
+                btnElement.style.opacity = "0.5";
+                btnElement.style.borderColor = "#f87171";
+                
+                Array.from(uiOptionsContainer.children).forEach(child => {
+                    if (child.innerText === currentAnswer) {
+                        child.style.backgroundColor = "#064e3b";
+                        child.style.borderColor = "#34d399";
+                        child.style.transform = "scale(1.05)";
+                        if(mode === 'calc') child.style.color = "white";
+                    }
+                });
+
+                uiQuestionCard.style.backgroundColor = "#7f1d1d";
+                uiQuestionCard.style.borderColor = "#f87171";
+            }
+
+            setTimeout(() => {
+                uiQuestionCard.style.backgroundColor = ""; 
+                renderQuestion();
+            }, DELAY_MS);
+        }
+
+        initGame();
+
+    </script>
+</body>
+</html>
