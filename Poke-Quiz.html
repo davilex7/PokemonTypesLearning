@@ -9,7 +9,7 @@
         /* Animaciones suaves */
         .fade-in { animation: fadeIn 0.3s ease-in-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
+
         .btn-press:active { transform: scale(0.95); }
         .pointer-events-none { pointer-events: none; }
 
@@ -19,19 +19,26 @@
             color: white;
             touch-action: manipulation;
         }
-        
+
         /* Animación suave para la flecha */
         .pulse-arrow { animation: pulseArrow 1.5s infinite; }
         @keyframes pulseArrow {
             0%, 100% { transform: translateX(0); opacity: 0.8; }
             50% { transform: translateX(5px); opacity: 1; }
         }
+
+        /* Toggle seleccionado en modo 3 */
+        .type-btn-selected {
+            outline: 3px solid white;
+            outline-offset: 1px;
+            box-shadow: 0 0 0 4px rgba(255,255,255,0.3);
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col items-center justify-center p-4 overflow-hidden select-none">
+<body class="min-h-screen flex flex-col items-center justify-start py-6 px-4 select-none">
 
     <div class="w-full max-w-md flex flex-col gap-6" id="app">
-        
+
         <!-- Puntuación -->
         <div class="flex justify-between items-center text-gray-400 text-sm font-mono">
             <span>Racha: <b id="streak" class="text-white text-xl">0</b></span>
@@ -40,7 +47,7 @@
 
         <!-- Área de la Pregunta -->
         <div id="question-card" class="bg-gray-800 rounded-2xl p-6 shadow-xl text-center border-4 border-gray-700 transition-colors duration-300 relative flex flex-col items-center justify-center min-h-[180px]">
-            
+
             <!-- Contenedor dinámico para el contenido de la pregunta -->
             <div id="question-content" class="w-full">
                 <!-- Se rellena con JS -->
@@ -59,7 +66,7 @@
         // ---------------------------------------------------------
         // 1. BASE DE DATOS EXTENDIDA
         // ---------------------------------------------------------
-        
+
         const TYPE_DATA = {
             "Normal":   { color: "#A8A77A", effectiveness: [], weakness: ["Lucha"], ineffective: ["Roca", "Acero"], immune: ["Fantasma"] },
             "Fuego":    { color: "#EE8130", effectiveness: ["Planta", "Hielo", "Bicho", "Acero"], weakness: ["Agua", "Tierra", "Roca"], ineffective: ["Fuego", "Agua", "Roca", "Dragón"], immune: [] },
@@ -82,12 +89,12 @@
         };
 
         // Configuración
-        const DELAY_MS = 1200; 
-        
+        const DELAY_MS = 1200;
+
         let currentStreak = 0;
         let highScore = 0;
         let isWaiting = false;
-        let currentAnswer = null; 
+        let currentAnswer = null;
 
         // Elementos DOM
         const uiStreak = document.getElementById('streak');
@@ -111,12 +118,14 @@
         function renderQuestion() {
             isWaiting = false;
             uiQuestionCard.className = "bg-gray-800 rounded-2xl p-6 shadow-xl text-center border-4 border-gray-700 transition-colors duration-300 relative flex flex-col items-center justify-center min-h-[180px] fade-in";
+            uiQuestionCard.style.backgroundColor = "";
             uiOptionsContainer.innerHTML = "";
 
-            // Decidir modo de juego: 
-            const gameMode = Math.random() > 0.4 ? 'IDENTIFY' : 'CALC'; // 60% Identify, 40% Calc
-
-            if (gameMode === 'IDENTIFY') {
+            // Decidir modo de juego: 70% SingleType, 15% Identify, 15% Calc
+            const rand = Math.random();
+            if (rand < 0.70) {
+                renderSingleTypeMode();
+            } else if (rand < 0.85) {
                 renderIdentifyMode();
             } else {
                 renderCalcMode();
@@ -127,7 +136,7 @@
         function renderIdentifyMode() {
             const baseType = getRandomKey(TYPE_DATA);
             const typeInfo = TYPE_DATA[baseType];
-            
+
             let subMode = Math.random() > 0.5 ? 'attack' : 'defend';
             if (subMode === 'attack' && typeInfo.effectiveness.length === 0) subMode = 'defend';
             if (subMode === 'defend' && typeInfo.weakness.length === 0) subMode = 'attack';
@@ -157,13 +166,13 @@
                 <div class="text-xl font-bold uppercase tracking-widest" style="color: ${borderColor}">${promptText}</div>
             `;
 
-            // Opciones + Layout (IMPORTANTE: h-80 forzado aquí)
+            // Opciones + Layout
             const allTypes = Object.keys(TYPE_DATA);
             const validDistractors = allTypes.filter(t => t !== currentAnswer && !correctPool.includes(t) && t !== baseType);
             const distractors = shuffle(validDistractors).slice(0, 3);
             const options = shuffle([currentAnswer, ...distractors]);
 
-            uiOptionsContainer.className = "grid grid-cols-2 gap-3 w-full h-80"; 
+            uiOptionsContainer.className = "grid grid-cols-2 gap-3 w-full h-80";
 
             options.forEach(opt => {
                 const btn = document.createElement('button');
@@ -180,11 +189,10 @@
         function renderCalcMode() {
             const attacker = getRandomKey(TYPE_DATA);
             const attackerInfo = TYPE_DATA[attacker];
-            
-            // Lógica de selección de defensor (igual que antes)
+
             let defender = "";
             const rand = Math.random();
-            
+
             if (rand < 0.3 && attackerInfo.effectiveness.length > 0) {
                 defender = attackerInfo.effectiveness[Math.floor(Math.random() * attackerInfo.effectiveness.length)];
                 currentAnswer = "x2";
@@ -202,30 +210,28 @@
                 currentAnswer = "x1";
             }
 
-            uiQuestionCard.style.borderColor = "#60a5fa"; 
+            uiQuestionCard.style.borderColor = "#60a5fa";
 
-            // Renderizar pregunta: Atacante ➜ Defensor
             uiQuestionContent.innerHTML = `
                 <div class="flex items-center justify-center gap-4">
                     <div class="px-4 py-2 rounded-lg font-bold text-white shadow-md text-xl min-w-[100px]" style="background-color: ${attackerInfo.color}; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${attacker}</div>
-                    
+
                     <div class="text-white text-4xl pulse-arrow px-2">➜</div>
-                    
+
                     <div class="px-4 py-2 rounded-lg font-bold text-white shadow-md text-xl min-w-[100px]" style="background-color: ${TYPE_DATA[defender].color}; text-shadow: 0 1px 2px rgba(0,0,0,0.5);">${defender}</div>
                 </div>
                 <div class="text-blue-400 font-bold uppercase tracking-widest mt-4 text-sm">¿Efectividad?</div>
             `;
 
-            // Opciones + Layout (IMPORTANTE: h-80 forzado aquí también)
             let options = ["x0", "x½", "x1", "x2"];
-            options = shuffle(options); 
+            options = shuffle(options);
 
-            uiOptionsContainer.className = "grid grid-cols-2 gap-3 w-full h-80"; 
+            uiOptionsContainer.className = "grid grid-cols-2 gap-3 w-full h-80";
 
             options.forEach(opt => {
                 const btn = document.createElement('button');
                 btn.className = `btn-press rounded-xl shadow-lg font-bold text-3xl flex items-center justify-center bg-gray-700 hover:bg-gray-600 border-2 border-gray-600 transition-all text-white h-full w-full`;
-                
+
                 if(opt === 'x2') btn.classList.add('text-green-400');
                 if(opt === 'x1') btn.classList.add('text-white');
                 if(opt === 'x½') btn.classList.add('text-red-400');
@@ -237,6 +243,171 @@
             });
         }
 
+        // --- MODO 3: TIPO ÚNICO (Multi-selección de todos los tipos) ---
+        function renderSingleTypeMode() {
+            const baseType = getRandomKey(TYPE_DATA);
+            const typeInfo = TYPE_DATA[baseType];
+            const allTypes = Object.keys(TYPE_DATA);
+
+            // 4 posibles subpreguntas
+            const subModes = ['atk_strong', 'atk_weak', 'def_weak', 'def_strong'];
+            const subMode = subModes[Math.floor(Math.random() * subModes.length)];
+
+            let questionText = "";
+            let correctSet = [];
+            let borderColor = "";
+
+            if (subMode === 'atk_strong') {
+                questionText = "¿Contra qué tipos es fuerte al atacar?";
+                correctSet = [...typeInfo.effectiveness];
+                borderColor = "#4ade80";
+            } else if (subMode === 'atk_weak') {
+                questionText = "¿Contra qué tipos es débil al atacar?";
+                correctSet = [...typeInfo.ineffective, ...typeInfo.immune];
+                borderColor = "#f87171";
+            } else if (subMode === 'def_weak') {
+                questionText = "¿De qué tipos sufre más daño?";
+                correctSet = [...typeInfo.weakness];
+                borderColor = "#fb923c";
+            } else {
+                // def_strong: buscar qué tipos hacen menos daño a baseType
+                questionText = "¿De qué tipos sufre menos daño (o es inmune)?";
+                correctSet = [];
+                for (const [t, data] of Object.entries(TYPE_DATA)) {
+                    if (data.ineffective.includes(baseType) || data.immune.includes(baseType)) {
+                        correctSet.push(t);
+                    }
+                }
+                borderColor = "#60a5fa";
+            }
+
+            // Reintentar si no hay respuesta válida (ej. Normal sin efectividades ofensivas)
+            if (correctSet.length === 0) {
+                renderSingleTypeMode();
+                return;
+            }
+
+            uiQuestionCard.style.borderColor = borderColor;
+
+            uiQuestionContent.innerHTML = `
+                <div class="inline-block px-8 py-3 rounded-full text-3xl font-bold shadow-lg text-white uppercase tracking-wider border border-white/20 mb-3" style="background-color: ${typeInfo.color}; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+                    ${baseType}
+                </div>
+                <div class="text-lg font-bold mb-1" style="color: ${borderColor}">${questionText}</div>
+                <div class="text-gray-400 text-xs">Marca todos los tipos que correspondan</div>
+            `;
+
+            uiOptionsContainer.className = "w-full flex flex-col gap-3";
+
+            const selectedTypes = new Set();
+
+            // Rejilla de los 18 tipos
+            const typeGrid = document.createElement('div');
+            typeGrid.className = "grid grid-cols-3 gap-2";
+
+            allTypes.forEach(typeName => {
+                const btn = document.createElement('button');
+                btn.className = "btn-press rounded-lg py-2 px-1 text-white font-bold text-sm border-2 border-transparent transition-all";
+                btn.style.backgroundColor = TYPE_DATA[typeName].color;
+                btn.style.textShadow = "0 1px 2px rgba(0,0,0,0.7)";
+                btn.innerText = typeName;
+                btn.dataset.type = typeName;
+
+                btn.onclick = () => {
+                    if (selectedTypes.has(typeName)) {
+                        selectedTypes.delete(typeName);
+                        btn.classList.remove('type-btn-selected');
+                    } else {
+                        selectedTypes.add(typeName);
+                        btn.classList.add('type-btn-selected');
+                    }
+                };
+
+                typeGrid.appendChild(btn);
+            });
+
+            // Botón Comprobar
+            const checkBtn = document.createElement('button');
+            checkBtn.className = "btn-press w-full py-3 rounded-xl font-bold text-lg text-white border-2 transition-all";
+            checkBtn.style.backgroundColor = "#7c3aed";
+            checkBtn.style.borderColor = "#a78bfa";
+            checkBtn.innerText = "Comprobar ✓";
+            checkBtn.onclick = () => handleSingleTypeAnswer(selectedTypes, typeGrid, checkBtn, correctSet);
+
+            uiOptionsContainer.appendChild(typeGrid);
+            uiOptionsContainer.appendChild(checkBtn);
+        }
+
+        function handleSingleTypeAnswer(selectedTypes, typeGrid, checkBtn, correctSet) {
+            if (isWaiting) return;
+            isWaiting = true;
+
+            const correctSetObj = new Set(correctSet);
+            const isCorrect = selectedTypes.size === correctSetObj.size &&
+                              [...selectedTypes].every(t => correctSetObj.has(t));
+
+            // Desactivar el botón y los tipos
+            checkBtn.onclick = null;
+            Array.from(typeGrid.children).forEach(btn => { btn.onclick = null; });
+
+            // Revelar resultado en cada botón de tipo
+            Array.from(typeGrid.children).forEach(btn => {
+                const typeName = btn.dataset.type;
+                const wasSelected = selectedTypes.has(typeName);
+                const isCorrectType = correctSetObj.has(typeName);
+
+                btn.classList.remove('type-btn-selected');
+
+                if (isCorrectType) {
+                    // Correcto: marcar en verde
+                    btn.style.outline = "3px solid #34d399";
+                    btn.style.outlineOffset = "1px";
+                    btn.style.boxShadow = "0 0 0 4px rgba(52,211,153,0.3)";
+                    btn.style.opacity = "1";
+                } else if (wasSelected) {
+                    // Seleccionado pero incorrecto: marcar en rojo y atenuar
+                    btn.style.outline = "3px solid #f87171";
+                    btn.style.outlineOffset = "1px";
+                    btn.style.opacity = "0.5";
+                } else {
+                    // No seleccionado, no correcto: muy atenuado
+                    btn.style.opacity = "0.2";
+                }
+            });
+
+            if (isCorrect) {
+                currentStreak++;
+                if (currentStreak > highScore) highScore = currentStreak;
+                uiStreak.innerText = currentStreak;
+                uiHighScore.innerText = highScore;
+
+                uiQuestionCard.style.backgroundColor = "#064e3b";
+                uiQuestionCard.style.borderColor = "#34d399";
+                checkBtn.style.opacity = "0.3";
+
+                setTimeout(() => {
+                    uiQuestionCard.style.backgroundColor = "";
+                    renderQuestion();
+                }, DELAY_MS);
+
+            } else {
+                currentStreak = 0;
+                uiStreak.innerText = 0;
+
+                uiQuestionCard.style.backgroundColor = "#7f1d1d";
+                uiQuestionCard.style.borderColor = "#f87171";
+
+                // Convertir el botón en "Siguiente pregunta"
+                checkBtn.innerText = "Siguiente pregunta →";
+                checkBtn.style.backgroundColor = "#374151";
+                checkBtn.style.borderColor = "#6b7280";
+                checkBtn.style.opacity = "1";
+                checkBtn.onclick = () => {
+                    uiQuestionCard.style.backgroundColor = "";
+                    renderQuestion();
+                };
+            }
+        }
 
         function handleAnswer(selected, btnElement, mode) {
             if (isWaiting) return;
@@ -252,9 +423,9 @@
 
                 btnElement.style.backgroundColor = "#064e3b";
                 btnElement.style.borderColor = "#34d399";
-                if(mode === 'calc') btnElement.style.color = "white"; 
-                
-                uiQuestionCard.style.backgroundColor = "#064e3b"; 
+                if(mode === 'calc') btnElement.style.color = "white";
+
+                uiQuestionCard.style.backgroundColor = "#064e3b";
                 uiQuestionCard.style.borderColor = "#34d399";
             } else {
                 currentStreak = 0;
@@ -262,7 +433,7 @@
 
                 btnElement.style.opacity = "0.5";
                 btnElement.style.borderColor = "#f87171";
-                
+
                 Array.from(uiOptionsContainer.children).forEach(child => {
                     if (child.innerText === currentAnswer) {
                         child.style.backgroundColor = "#064e3b";
@@ -277,7 +448,7 @@
             }
 
             setTimeout(() => {
-                uiQuestionCard.style.backgroundColor = ""; 
+                uiQuestionCard.style.backgroundColor = "";
                 renderQuestion();
             }, DELAY_MS);
         }
