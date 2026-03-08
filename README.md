@@ -20,7 +20,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Tipos-18-red?style=flat-square" alt="18 Tipos"/>
-  <img src="https://img.shields.io/badge/Modos_de_Juego-2-blue?style=flat-square" alt="2 Modos"/>
+  <img src="https://img.shields.io/badge/Modos_de_Juego-3-blue?style=flat-square" alt="3 Modos"/>
   <img src="https://img.shields.io/badge/Sin_Dependencias-✓-green?style=flat-square" alt="Sin Dependencias"/>
   <img src="https://img.shields.io/badge/100%25-Client_Side-purple?style=flat-square" alt="Client Side"/>
 </p>
@@ -45,7 +45,7 @@ El juego presenta preguntas aleatorias sobre efectividades de tipo, poniendo a p
 <tr>
 <td width="50%">
 
-### 🎯 Modo Identificar
+### 🎯 Modo Identificar *(15%)*
 - Identifica qué tipos son **fuertes** o **débiles** contra un tipo dado
 - Preguntas del estilo: *"Fuego → Fuerte contra..."*
 - Cuadrícula 2x2 con opciones de respuesta
@@ -54,11 +54,26 @@ El juego presenta preguntas aleatorias sobre efectividades de tipo, poniendo a p
 </td>
 <td width="50%">
 
-### 🧮 Modo Calculadora
+### 🧮 Modo Calculadora *(15%)*
 - Determina el multiplicador de daño entre dos tipos
 - Visualiza: *Tipo Atacante → Tipo Defensor*
 - Opciones: x0, x½, x1, x2
 - Animación de flecha pulsante
+
+</td>
+</tr>
+<tr>
+<td colspan="2">
+
+### 🃏 Modo Tipo Único *(70%)*
+- Un solo tipo en pantalla, cuatro preguntas posibles:
+  - ¿Contra qué tipos es **fuerte al atacar**?
+  - ¿Contra qué tipos es **débil al atacar**?
+  - ¿De qué tipos **sufre más daño**?
+  - ¿De qué tipos **sufre menos daño** (o es inmune)?
+- Rejilla con los **18 tipos** para marcar todos los correctos
+- Pulsa **Comprobar** para verificar tu selección
+- Si fallas, la respuesta correcta queda resaltada y debes pulsar **Siguiente pregunta** para continuar
 
 </td>
 </tr>
@@ -84,11 +99,21 @@ El juego presenta preguntas aleatorias sobre efectividades de tipo, poniendo a p
 ```
 1. 🚀 Abre Poke-Quiz.html en tu navegador
 2. 👀 Lee la pregunta que aparece en pantalla
-3. 🤔 Analiza las 4 opciones disponibles
-4. 👆 Selecciona tu respuesta
-5. ✅ Verde = ¡Correcto! | ❌ Rojo = Incorrecto (se muestra la respuesta correcta)
-6. 🔄 La siguiente pregunta aparece automáticamente
-7. 📈 ¡Intenta superar tu récord!
+
+   Modos Identificar y Calculadora:
+   3a. 🤔 Analiza las 4 opciones disponibles
+   4a. 👆 Selecciona tu respuesta
+   5a. ✅ Verde = ¡Correcto! | ❌ Rojo = Incorrecto (se muestra la respuesta correcta)
+   6a. 🔄 La siguiente pregunta aparece automáticamente
+
+   Modo Tipo Único:
+   3b. 🗂️ Marca todos los tipos de la rejilla que creas correctos
+   4b. ✔️ Pulsa "Comprobar" para ver el resultado
+   5b. ✅ ¡Correcto! → avanza automáticamente
+       ❌ Incorrecto → se revelan los tipos correctos (verde) y los erróneos (rojo)
+   6b. ➡️ Pulsa "Siguiente pregunta" para continuar
+
+7. 📈 ¡Intenta superar tu récord de racha!
 ```
 
 ---
@@ -212,8 +237,9 @@ PokemonTypesLearning/
 
 ```javascript
 // Probabilidades de los modos de juego
-const MODO_IDENTIFICAR = 60%;  // Probabilidad del modo identificar
-const MODO_CALCULADORA = 40%;  // Probabilidad del modo calculadora
+const MODO_TIPO_UNICO  = 70%;  // Modo tipo único (multi-selección)
+const MODO_IDENTIFICAR = 15%;  // Modo identificar (4 opciones)
+const MODO_CALCULADORA = 15%;  // Modo calculadora (x0/x½/x1/x2)
 
 // Distribución en Modo Calculadora
 const DISTRIBUCION = {
@@ -224,7 +250,7 @@ const DISTRIBUCION = {
 };
 
 // Timing
-const DELAY_MS = 1200;  // Tiempo antes de siguiente pregunta
+const DELAY_MS = 1200;  // Tiempo antes de siguiente pregunta (acierto)
 ```
 
 ---
@@ -271,6 +297,29 @@ const DELAY_MS = 1200;  // Tiempo antes de siguiente pregunta
 └─────────────────────────────────┘
 ```
 
+### Modo Tipo Único
+```
+┌─────────────────────────────────┐
+│   Racha: 7      Récord: 12      │
+├─────────────────────────────────┤
+│                                 │
+│           🌿 PLANTA             │
+│   ¿De qué tipos sufre más daño? │
+│   Marca todos los que correspondan
+│                                 │
+│ ┌──────┐ ┌──────┐ ┌──────┐     │
+│ │Normal│ │Fuego │ │Agua  │     │
+│ ├──────┤ ├──────┤ ├──────┤     │
+│ │Elec. │ │Planta│ │Hielo │     │
+│ ├──────┤ ├──────┤ ├──────┤     │
+│ │Lucha │ │Veneno│ │Tierra│     │
+│ │ ...  │ │ ...  │ │ ...  │     │
+│ └──────┘ └──────┘ └──────┘     │
+│                                 │
+│      [ Comprobar ✓ ]            │
+└─────────────────────────────────┘
+```
+
 ---
 
 ## 🤝 Contribuir
@@ -284,7 +333,7 @@ const DELAY_MS = 1200;  // Tiempo antes de siguiente pregunta
 5. 🔄 Abre un Pull Request
 
 ### Ideas para contribuir
-- [ ] Añadir modo de tipos dobles
+- [ ] Añadir modo de tipos dobles (combinaciones de dos tipos)
 - [ ] Implementar sistema de niveles de dificultad
 - [ ] Añadir efectos de sonido
 - [ ] Crear leaderboard con localStorage
